@@ -32,6 +32,7 @@ async function run() {
 
     const database = client.db("smart_db");
     const productsCollection = database.collection("products");
+    const bidsCollection = database.collection("bids");
 
     app.get("/products", async (req, res) => {
       //   const cursor = productsCollection.find().sort({price_min: -1}).skip(2).limit(5).project({title: 1, price_min: 1, price_max: 1, image: 1});
@@ -74,6 +75,46 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // bids related api
+    app.get("/bids", async (req, res) => {
+      const query = {};
+      const email = req.query.email;
+      if (email) {
+        query.buyer_email = email;
+      }
+
+      const cursor = bidsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.post("/bids", async (req, res) => {
+      const newBid = req.body;
+      const result = await bidsCollection.insertOne(newBid);
+      res.send(result);
+    });
+
+    app.patch("/bids/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedBid = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          bid_price: updatedBid.buyer_name,
+          bid_price: updatedBid.bid_price,
+        },
+      };
+      const result = await productsCollection.updateOne(query, update);
+      res.send(result);
+    });
+
+    app.delete("/bids/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bidsCollection.deleteOne(query);
       res.send(result);
     });
 
