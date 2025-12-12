@@ -52,7 +52,7 @@ async function run() {
       if (existingUser) {
         return res.send({ message: "User already exists", user: existingUser });
       }
-      
+
       const result = await usersCollection.insertOne(newUser);
       res.send(result);
     });
@@ -73,16 +73,17 @@ async function run() {
     });
 
     app.get("/recent-products", async (req, res) => {
-      const cursor = productsCollection.find().sort({ created_at: -1}).limit(6);
+      const cursor = productsCollection
+        .find()
+        .sort({ created_at: -1 })
+        .limit(6);
       const result = await cursor.toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
-      // const query = { _id: new ObjectId(id) };
-      const query = { _id: id };
-
+      const query = { _id: new ObjectId(id) };
       const result = await productsCollection.findOne(query);
       res.send(result);
     });
