@@ -116,13 +116,28 @@ async function run() {
     app.get("/bids", async (req, res) => {
       const query = {};
       const email = req.query.email;
+
       if (email) {
         query.buyer_email = email;
       }
 
       const cursor = bidsCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
+      const bids = await cursor.toArray();
+
+      const bidsWithProducts = await Promise.all(
+        bids.map(async (bid) => {
+          const product = await productsCollection.findOne({
+            _id: new ObjectId(bid.product),
+          });
+
+          return {
+            ...bid,
+            product_details: product,
+          };
+        })
+      );
+
+      res.send(bidsWithProducts);
     });
 
     app.get("/products/bids/:productId", async (req, res) => {
