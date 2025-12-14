@@ -127,8 +127,8 @@ async function run() {
 
     app.get("/products/bids/:productId", async (req, res) => {
       const productId = req.params.productId;
-      const query = {product: productId};
-      const cursor = bidsCollection.find(query).sort({bid_price: -1});
+      const query = { product: productId };
+      const cursor = bidsCollection.find(query).sort({ bid_price: -1 });
       const result = await cursor.toArray();
       res.send(result);
     });
