@@ -80,22 +80,12 @@ async function run() {
     });
 
     app.get("/recent-products", async (req, res) => {
-      // const cursor = productsCollection
-      //   .find()
-      //   .sort({ created_at: -1 })
-      //   .limit(6);
-      // const result = await cursor.toArray();
-      // res.send(result);
-      try {
-        const cursor = productsCollection
-          .find()
-          .sort({ created_at: -1 })
-          .limit(6);
-        const result = await cursor.toArray();
-        res.json(result); // Better than res.send for JSON
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch products" });
-      }
+      const cursor = productsCollection
+        .find()
+        .sort({ created_at: -1 })
+        .limit(6);
+      const result = await cursor.toArray();
+      res.send(result);
     });
 
     app.get("/products/:id", async (req, res) => {
