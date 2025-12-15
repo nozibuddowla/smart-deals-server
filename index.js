@@ -14,7 +14,7 @@ const corsOptions = {
 };
 
 // middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@simple-curd-cluster.oq47ln2.mongodb.net/?appName=simple-curd-cluster`;
@@ -80,12 +80,22 @@ async function run() {
     });
 
     app.get("/recent-products", async (req, res) => {
-      const cursor = productsCollection
-        .find()
-        .sort({ created_at: -1 })
-        .limit(6);
-      const result = await cursor.toArray();
-      res.send(result);
+      // const cursor = productsCollection
+      //   .find()
+      //   .sort({ created_at: -1 })
+      //   .limit(6);
+      // const result = await cursor.toArray();
+      // res.send(result);
+      try {
+        const cursor = productsCollection
+          .find()
+          .sort({ created_at: -1 })
+          .limit(6);
+        const result = await cursor.toArray();
+        res.json(result); // Better than res.send for JSON
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch products" });
+      }
     });
 
     app.get("/products/:id", async (req, res) => {
