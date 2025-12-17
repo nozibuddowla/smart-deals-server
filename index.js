@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config()
+require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
@@ -9,6 +9,30 @@ const port = process.env.PORT || 3000;
 // middleware
 app.use(cors());
 app.use(express.json());
+
+const logger = (req, res, next) => {
+  console.log("logging info");
+  next();
+};
+
+const verifyFireBaseToken = (req, res, next) => {
+  console.log(" in the verify middleware", req.headers.authorization);
+
+  if (!req.headers.authorization) {
+    // do not allow to go
+    return res.status(401).send({message: "unauthorized access"})
+  }
+
+  const token = req.headers.authorization.split(" ")[1];
+  
+  if (!token) {
+    // do not allow to go
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  // verify token
+  next();
+};
 
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@simple-curd-cluster.oq47ln2.mongodb.net/?appName=simple-curd-cluster`;
 const uri = process.env.MONGO_URI;
@@ -114,7 +138,9 @@ async function run() {
     });
 
     // bids related api
-    app.get("/bids", async (req, res) => {
+    app.get("/bids", logger, verifyFireBaseToken, async (req, res) => {
+      // console.log("headers: ", req.headers);
+
       const query = {};
       const email = req.query.email;
 
