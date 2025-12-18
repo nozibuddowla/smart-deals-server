@@ -5,9 +5,23 @@ const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const admin = require("firebase-admin");
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
-var serviceAccount = require("./smart-deals-firebase-admin-key.json");
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+  console.error("❌ FIREBASE_SERVICE_ACCOUNT is missing in .env");
+  process.exit(1);
+}
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+// const serviceAccount = require("./smart-deals-firebase-admin-key.json");
+
+// Add this line to fix the private key formatting:
+if (serviceAccount && serviceAccount.private_key) {
+  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+} else {
+  console.error("❌ private_key not found in the service account JSON");
+  process.exit(1);
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -43,16 +57,13 @@ const verifyFireBaseToken = async (req, res, next) => {
     // console.log("after token validation: ", userInfo);
 
     next();
-  } catch {
+  } catch (error) {
     console.log("Invalid token!", error);
 
     return res.status(401).send({ message: "unauthorized access" });
   }
-
-  // verify token
 };
 
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@simple-curd-cluster.oq47ln2.mongodb.net/?appName=simple-curd-cluster`;
 const uri = process.env.MONGO_URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -68,6 +79,35 @@ app.get("/", (req, res) => {
   res.send("f society");
 });
 
+// jwt related apis
+app.post("/getToken", async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).send({ error: "Firebase ID token is required" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const email = decodedToken.email;
+
+    if (!email) {
+      return res.status(401).send({ error: "Invalid Firebase token" });
+    }
+
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    // console.log("Token generated for:", loggedUser.email);
+
+    res.send({ token });
+  } catch (error) {
+    console.error("Error generating token:", error);
+    res.status(500).send({ error: "Failed to generate token" });
+  }
+});
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -78,20 +118,18 @@ async function run() {
     const bidsCollection = database.collection("bids");
     const usersCollection = database.collection("users");
 
-    // jwt related apis
-    app.post("/getToken", (req, res) => {
-      const loggedUser = req.body;
-      const token = jwt.sign(loggedUser, process.env.JWT_SECRET, {
-        expiresIn: "1h",
-      });
-      res.send({ token: token });
-    });
+    console.log("✅ Connected to MongoDB!");
 
     // users api
     app.get("/users", async (req, res) => {
-      const cursor = usersCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
+      try {
+        const cursor = usersCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).send({ error: "Failed to fetch users" });
+      }
     });
 
     app.post("/users", async (req, res) => {
@@ -157,7 +195,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/products/:id", async (req, res) => {
+    app.delete("/products/:id", verifyFireBaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productsCollection.deleteOne(query);
