@@ -65,7 +65,7 @@ const verifyFireBaseToken = async (req, res, next) => {
 };
 
 const verifyJWTToken = (req, res, next) => {
-  // console.log("In middleware", req.headers);
+  console.log("In middleware", req.headers);
 
   const authorization = req.headers.authorization;
   if (!authorization) {
@@ -74,7 +74,6 @@ const verifyJWTToken = (req, res, next) => {
 
   const token = req.headers.authorization.split(" ")[1];
   // console.log(token);
-  
 
   if (!token) {
     // do not allow to go
@@ -84,8 +83,8 @@ const verifyJWTToken = (req, res, next) => {
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
       console.log(err);
-      
-      return res.status(401).send({ message: "unauthorized access nozib" });
+
+      return res.status(401).send({ message: "unauthorized access" });
     }
 
     next();
@@ -122,8 +121,10 @@ async function run() {
     // jwt related apis
     app.post("/getToken", async (req, res) => {
       const loggedUser = req.body;
-      const token = jwt.sign({ email: "abc" }, process.env.JWT_SECRET, { expiresIn: "1h" });
-      res.send({token: token})
+      const token = jwt.sign({ email: "abc" }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token: token });
     });
 
     // users api
@@ -209,43 +210,50 @@ async function run() {
     });
 
     // bids related api with firebase token verify
-    app.get(
-      "/bids",
-      logger,
-      verifyFireBaseToken,
-      verifyJWTToken,
-      async (req, res) => {
-        // console.log("headers: ", req.headers);
+    app.get("/bids", verifyJWTToken, async (req, res) => {
+      const email = req.query.email;
+      const query = {};
 
-        const query = {};
-        const email = req.query.email;
-
-        if (email) {
-          if (email !== req.token_email) {
-            return res.status(403).send({ message: "forbidden access" });
-          }
-          query.buyer_email = email;
-        }
-
-        const cursor = bidsCollection.find(query);
-        const bids = await cursor.toArray();
-
-        const bidsWithProducts = await Promise.all(
-          bids.map(async (bid) => {
-            const product = await productsCollection.findOne({
-              _id: new ObjectId(bid.product),
-            });
-
-            return {
-              ...bid,
-              product_details: product,
-            };
-          })
-        );
-
-        res.send(bidsWithProducts);
+      if (email) {
+        query.buyer_email = email;
       }
-    );
+
+      const cursor = bidsCollection.find(query);
+      const bids = await cursor.toArray();
+
+      res.send(bids);
+    });
+    // app.get("/bids", logger, verifyFireBaseToken, async (req, res) => {
+    //   // console.log("headers: ", req.headers);
+
+    //   const query = {};
+    //   const email = req.query.email;
+
+    //   if (email) {
+    //     if (email !== req.token_email) {
+    //       return res.status(403).send({ message: "forbidden access" });
+    //     }
+    //     query.buyer_email = email;
+    //   }
+
+    //   const cursor = bidsCollection.find(query);
+    //   const bids = await cursor.toArray();
+
+    //   const bidsWithProducts = await Promise.all(
+    //     bids.map(async (bid) => {
+    //       const product = await productsCollection.findOne({
+    //         _id: new ObjectId(bid.product),
+    //       });
+
+    //       return {
+    //         ...bid,
+    //         product_details: product,
+    //       };
+    //     })
+    //   );
+
+    //   res.send(bidsWithProducts);
+    // });
 
     app.get(
       "/products/bids/:productId",
