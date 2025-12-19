@@ -64,6 +64,30 @@ const verifyFireBaseToken = async (req, res, next) => {
   }
 };
 
+const verifyJWTToken = (req, res, next) => {
+  console.log("In middleware", req.headers);
+
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  const token = req.headers.authorization.split(" ")[1];
+
+  if (!token) {
+    // do not allow to go
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+
+    next();
+  });
+};
+
 const uri = process.env.MONGO_URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -202,38 +226,44 @@ async function run() {
       res.send(result);
     });
 
-    // bids related api
-    app.get("/bids", logger, verifyFireBaseToken, async (req, res) => {
-      // console.log("headers: ", req.headers);
+    // bids related api with firebase token verify
+    app.get(
+      "/bids",
+      logger,
+      verifyFireBaseToken,
+      verifyJWTToken,
+      async (req, res) => {
+        // console.log("headers: ", req.headers);
 
-      const query = {};
-      const email = req.query.email;
+        const query = {};
+        const email = req.query.email;
 
-      if (email) {
-        if (email !== req.token_email) {
-          return res.status(403).send({ message: "forbidden access" });
+        if (email) {
+          if (email !== req.token_email) {
+            return res.status(403).send({ message: "forbidden access" });
+          }
+          query.buyer_email = email;
         }
-        query.buyer_email = email;
+
+        const cursor = bidsCollection.find(query);
+        const bids = await cursor.toArray();
+
+        const bidsWithProducts = await Promise.all(
+          bids.map(async (bid) => {
+            const product = await productsCollection.findOne({
+              _id: new ObjectId(bid.product),
+            });
+
+            return {
+              ...bid,
+              product_details: product,
+            };
+          })
+        );
+
+        res.send(bidsWithProducts);
       }
-
-      const cursor = bidsCollection.find(query);
-      const bids = await cursor.toArray();
-
-      const bidsWithProducts = await Promise.all(
-        bids.map(async (bid) => {
-          const product = await productsCollection.findOne({
-            _id: new ObjectId(bid.product),
-          });
-
-          return {
-            ...bid,
-            product_details: product,
-          };
-        })
-      );
-
-      res.send(bidsWithProducts);
-    });
+    );
 
     app.get(
       "/products/bids/:productId",
