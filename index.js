@@ -65,7 +65,7 @@ const verifyFireBaseToken = async (req, res, next) => {
 };
 
 const verifyJWTToken = (req, res, next) => {
-  console.log("In middleware", req.headers);
+  // console.log("In middleware", req.headers);
 
   const authorization = req.headers.authorization;
   if (!authorization) {
@@ -73,6 +73,8 @@ const verifyJWTToken = (req, res, next) => {
   }
 
   const token = req.headers.authorization.split(" ")[1];
+  // console.log(token);
+  
 
   if (!token) {
     // do not allow to go
@@ -81,7 +83,9 @@ const verifyJWTToken = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(401).send({ message: "unauthorized access" });
+      console.log(err);
+      
+      return res.status(401).send({ message: "unauthorized access nozib" });
     }
 
     next();
@@ -103,35 +107,6 @@ app.get("/", (req, res) => {
   res.send("f society");
 });
 
-// jwt related apis
-app.post("/getToken", async (req, res) => {
-  try {
-    const { idToken } = req.body;
-
-    if (!idToken) {
-      return res.status(400).send({ error: "Firebase ID token is required" });
-    }
-
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const email = decodedToken.email;
-
-    if (!email) {
-      return res.status(401).send({ error: "Invalid Firebase token" });
-    }
-
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    // console.log("Token generated for:", loggedUser.email);
-
-    res.send({ token });
-  } catch (error) {
-    console.error("Error generating token:", error);
-    res.status(500).send({ error: "Failed to generate token" });
-  }
-});
-
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -143,6 +118,13 @@ async function run() {
     const usersCollection = database.collection("users");
 
     console.log("✅ Connected to MongoDB!");
+
+    // jwt related apis
+    app.post("/getToken", async (req, res) => {
+      const loggedUser = req.body;
+      const token = jwt.sign({ email: "abc" }, process.env.JWT_SECRET, { expiresIn: "1h" });
+      res.send({token: token})
+    });
 
     // users api
     app.get("/users", async (req, res) => {
