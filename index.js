@@ -24,7 +24,7 @@ const logger = (req, res, next) => {
 
 const verifyFireBaseToken = async (req, res, next) => {
   // console.log(" in the verify middleware", req.headers.authorization);
-  console.log(" inside the middleware", req.headers);
+  // console.log(" inside the middleware", req.headers);
 
   const authorization = req.headers.authorization;
 
@@ -43,7 +43,7 @@ const verifyFireBaseToken = async (req, res, next) => {
   try {
     const userInfo = await admin.auth().verifyIdToken(token);
     req.token_email = userInfo.email;
-    console.log("after token validation: ", userInfo);
+    // console.log("after token validation: ", userInfo);
 
     next();
   } catch (error) {
