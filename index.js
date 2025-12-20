@@ -4,24 +4,10 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
-const admin = require("firebase-admin");
 const port = process.env.PORT || 5000;
+const admin = require("firebase-admin");
 
-if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-  console.error("❌ FIREBASE_SERVICE_ACCOUNT is missing in .env");
-  process.exit(1);
-}
-
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-// const serviceAccount = require("./smart-deals-firebase-admin-key.json");
-
-// Add this line to fix the private key formatting:
-if (serviceAccount && serviceAccount.private_key) {
-  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
-} else {
-  console.error("❌ private_key not found in the service account JSON");
-  process.exit(1);
-}
+const serviceAccount = require("./smart-deals-firebase-admin-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -38,13 +24,16 @@ const logger = (req, res, next) => {
 
 const verifyFireBaseToken = async (req, res, next) => {
   // console.log(" in the verify middleware", req.headers.authorization);
+  console.log(" inside the middleware", req.headers);
 
-  if (!req.headers.authorization) {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
     // do not allow to go
     return res.status(401).send({ message: "unauthorized access" });
   }
 
-  const token = req.headers.authorization.split(" ")[1];
+  const token = authorization.split(" ")[1];
 
   if (!token) {
     // do not allow to go
@@ -54,7 +43,7 @@ const verifyFireBaseToken = async (req, res, next) => {
   try {
     const userInfo = await admin.auth().verifyIdToken(token);
     req.token_email = userInfo.email;
-    // console.log("after token validation: ", userInfo);
+    console.log("after token validation: ", userInfo);
 
     next();
   } catch (error) {
@@ -123,10 +112,14 @@ async function run() {
     // jwt related apis
     app.post("/getToken", async (req, res) => {
       const loggedUser = req.body;
-      
-      const token = jwt.sign({ email: loggedUser.email }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
-      });
+
+      const token = jwt.sign(
+        { email: loggedUser.email },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "1h",
+        }
+      );
 
       // console.log("Token generated for:", loggedUser.email);
 
@@ -216,17 +209,47 @@ async function run() {
     });
 
     // bids related api with firebase token verify
-    app.get("/bids", verifyJWTToken, async (req, res) => {
+    // app.get("/bids", verifyJWTToken, async (req, res) => {
+    //   const email = req.query.email;
+    //   const query = {};
+
+    //   if (email) {
+    //     query.buyer_email = email;
+    //   }
+
+    //   // verify user have access to see this data
+    //   if (email !== req.token_email) {
+    //     return res.status(403).send({message: "forbidden access!"})
+    //   }
+
+    //   const cursor = bidsCollection.find(query);
+    //   const bids = await cursor.toArray();
+
+    //   const bidsWithProducts = await Promise.all(
+    //     bids.map(async (bid) => {
+    //       const product = await productsCollection.findOne({
+    //         _id: new ObjectId(bid.product),
+    //       });
+
+    //       return {
+    //         ...bid,
+    //         product_details: product,
+    //       };
+    //     })
+    //   );
+
+    //   res.send(bidsWithProducts);
+    // });
+
+    app.get("/bids", verifyFireBaseToken, async (req, res) => {
       const email = req.query.email;
       const query = {};
 
       if (email) {
         query.buyer_email = email;
-      }
-
-      // verify user have access to see this data
-      if (email !== req.token_email) {
-        return res.status(403).send({message: "forbidden access!"})
+        if (email !== req.token_email) {
+          return res.status(403).send({message: "forbidden access!"})
+        }
       }
 
       const cursor = bidsCollection.find(query);
