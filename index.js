@@ -273,7 +273,6 @@ async function run() {
 
     app.get(
       "/products/bids/:productId",
-      verifyFireBaseToken,
       async (req, res) => {
         const productId = req.params.productId;
         const query = { product: productId };
@@ -282,6 +281,18 @@ async function run() {
         res.send(result);
       }
     );
+
+    // app.get(
+    //   "/products/bids/:productId",
+    //   verifyFireBaseToken,
+    //   async (req, res) => {
+    //     const productId = req.params.productId;
+    //     const query = { product: productId };
+    //     const cursor = bidsCollection.find(query).sort({ bid_price: -1 });
+    //     const result = await cursor.toArray();
+    //     res.send(result);
+    //   }
+    // );
 
     app.post("/bids", async (req, res) => {
       const newBid = req.body;
