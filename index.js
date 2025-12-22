@@ -7,7 +7,17 @@ const app = express();
 const port = process.env.PORT || 5000;
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./smart-deals-firebase-admin-key.json");
+// const serviceAccount = require("./smart-deals-firebase-admin-key.json");
+
+let serviceAccount;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // Use the environment variable on the live site
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  // Use the local file on your computer
+  serviceAccount = require("./smart-deals-firebase-admin-key.json");
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -185,6 +195,7 @@ async function run() {
     });
 
     app.post("/products", async (req, res) => {
+      console.log("headers in the post: ", req.headers);
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct);
       res.send(result);
