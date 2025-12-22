@@ -57,7 +57,7 @@ const verifyFireBaseToken = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.log("Invalid token!", error);
+    // console.log("Invalid token!", error);
 
     return res.status(401).send({ message: "unauthorized access" });
   }
@@ -194,8 +194,8 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/products", async (req, res) => {
-      console.log("headers in the post: ", req.headers);
+    app.post("/products", verifyFireBaseToken, async (req, res) => {
+      // console.log("headers in the post: ", req.headers);
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct);
       res.send(result);
@@ -259,7 +259,7 @@ async function run() {
       if (email) {
         query.buyer_email = email;
         if (email !== req.token_email) {
-          return res.status(403).send({message: "forbidden access!"})
+          return res.status(403).send({ message: "forbidden access!" });
         }
       }
 
@@ -282,16 +282,13 @@ async function run() {
       res.send(bidsWithProducts);
     });
 
-    app.get(
-      "/products/bids/:productId",
-      async (req, res) => {
-        const productId = req.params.productId;
-        const query = { product: productId };
-        const cursor = bidsCollection.find(query).sort({ bid_price: -1 });
-        const result = await cursor.toArray();
-        res.send(result);
-      }
-    );
+    app.get("/products/bids/:productId", async (req, res) => {
+      const productId = req.params.productId;
+      const query = { product: productId };
+      const cursor = bidsCollection.find(query).sort({ bid_price: -1 });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     // app.get(
     //   "/products/bids/:productId",
