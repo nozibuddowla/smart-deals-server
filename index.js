@@ -7,13 +7,17 @@ const app = express();
 const port = process.env.PORT || 5000;
 const admin = require("firebase-admin");
 
-// const serviceAccount = require("./smart-deals-firebase-admin-key.json");
-
 let serviceAccount;
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // Use the environment variable on the live site
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else if (process.env.FIREBASE_SERVICE_KEY) {
+  const decoded = Buffer.from(
+    process.env.FIREBASE_SERVICE_KEY,
+    "base64"
+  ).toString("utf8");
+  serviceAccount = JSON.parse(decoded);
 } else {
   // Use the local file on your computer
   serviceAccount = require("./smart-deals-firebase-admin-key.json");
@@ -330,7 +334,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
